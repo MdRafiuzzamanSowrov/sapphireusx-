@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#07111f">
+    <meta
+      name="description"
+      content="SapphireUSX is a demo daily wellness check-in dashboard for long space missions."
+    >
+    <title>SapphireUSX — Crew wellness check-in</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="script.js" defer></script>
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="SapphireUSX home">
+          <span class="brand-mark" aria-hidden="true">✦</span>
+          <span>SapphireUSX</span>
+        </a>
+        <div class="mission-tag">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span>MISSION DEMO</span>
+        </div>
+      </header>
+
+      <main>
+        <section class="welcome" aria-labelledby="welcome-title">
+          <div class="welcome-copy">
+            <p class="eyebrow">CREW WELLNESS · DAILY OVERVIEW</p>
+            <h1 id="welcome-title">Good morning, <span>Commander.</span></h1>
+            <p class="welcome-subtitle">A small check-in can make a big difference. How are you feeling today?</p>
+          </div>
+          <div class="mission-clock" aria-label="Sample mission day">
+            <span class="clock-label">MISSION DAY</span>
+            <span class="clock-value">148</span>
+            <span class="clock-note">ORBITAL SAMPLE</span>
+          </div>
+        </section>
+
+        <section class="dashboard-section" aria-labelledby="snapshot-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">YOUR SNAPSHOT</p>
+              <h2 id="snapshot-title">Today at a glance</h2>
+            </div>
+            <span class="sample-label"><span aria-hidden="true">●</span> Sample data</span>
+          </div>
+
+          <div class="metrics-grid">
+            <article class="metric-card">
+              <div class="metric-top">
+                <span class="metric-icon sleep-icon" aria-hidden="true">☾</span>
+                <span class="trend neutral">LAST NIGHT</span>
+              </div>
+              <p class="metric-label">Sleep</p>
+              <p class="metric-value">7.8 <span>hrs</span></p>
+              <div class="metric-track" aria-label="Sample sleep: 7.8 hours">
+                <span class="track-sleep"></span>
+              </div>
+              <p class="metric-note">Sample target: 8 hours</p>
+            </article>
+
+            <article class="metric-card">
+              <div class="metric-top">
+                <span class="metric-icon mood-icon" aria-hidden="true">☺</span>
+                <span class="trend positive">● STEADY</span>
+              </div>
+              <p class="metric-label">Mood</p>
+              <p class="metric-value">Good</p>
+              <p class="metric-note">Sample check-in · yesterday</p>
+            </article>
+
+            <article class="metric-card">
+              <div class="metric-top">
+                <span class="metric-icon activity-icon" aria-hidden="true">↗</span>
+                <span class="trend neutral">TODAY</span>
+              </div>
+              <p class="metric-label">Movement</p>
+              <p class="metric-value">6,420 <span>steps</span></p>
+              <div class="metric-track" aria-label="Sample movement: 6,420 steps">
+                <span class="track-activity"></span>
+              </div>
+              <p class="metric-note">Sample activity reading</p>
+            </article>
+
+            <article class="metric-card">
+              <div class="metric-top">
+                <span class="metric-icon hydration-icon" aria-hidden="true">◌</span>
+                <span class="trend neutral">TODAY</span>
+              </div>
+              <p class="metric-label">Hydration</p>
+              <p class="metric-value">82 <span>%</span></p>
+              <div class="metric-track" aria-label="Sample hydration: 82 percent">
+                <span class="track-hydration"></span>
+              </div>
+              <p class="metric-note">Sample daily estimate</p>
+            </article>
+          </div>
+        </section>
+
+        <div class="content-grid">
+          <section class="checkin-card" aria-labelledby="checkin-title">
+            <div class="card-heading">
+              <div>
+                <p class="eyebrow">TAKES ABOUT 1 MINUTE</p>
+                <h2 id="checkin-title">Daily check-in</h2>
+              </div>
+              <span class="checkin-sparkle" aria-hidden="true">✧</span>
+            </div>
+            <p class="form-intro">Your check-in stays on this page and is not sent or saved.</p>
+
+            <form id="checkin-form">
+              <div class="field-group">
+                <label for="sleep-hours">How many hours did you sleep?</label>
+                <div class="input-with-unit">
+                  <input id="sleep-hours" name="sleep" type="number" min="0" max="24" step="0.5" placeholder="e.g. 7.5" required>
+                  <span>hours</span>
+                </div>
+              </div>
+
+              <fieldset class="field-group mood-field">
+                <legend>How is your mood today?</legend>
+                <div class="mood-options">
+                  <label class="mood-option">
+                    <input type="radio" name="mood" value="Great" required>
+                    <span><span aria-hidden="true">✦</span> Great</span>
+                  </label>
+                  <label class="mood-option">
+                    <input type="radio" name="mood" value="Okay">
+                    <span><span aria-hidden="true">☼</span> Okay</span>
+                  </label>
+                  <label class="mood-option">
+                    <input type="radio" name="mood" value="Low">
+                    <span><span aria-hidden="true">☾</span> Low</span>
+                  </label>
+                </div>
+              </fieldset>
+
+              <div class="field-group">
+                <label for="symptoms">Any symptoms you’d like to note? <span class="optional">(optional)</span></label>
+                <textarea id="symptoms" name="symptoms" rows="3" placeholder="For example: headache, nausea, or none today"></textarea>
+              </div>
+
+              <button class="submit-button" type="submit">
+                Submit check-in <span aria-hidden="true">→</span>
+              </button>
+              <p id="form-message" class="form-message" role="status" aria-live="polite"></p>
+            </form>
+          </section>
+
+          <aside class="side-column">
+            <section class="tip-card" aria-labelledby="tip-title">
+              <div class="tip-icon" aria-hidden="true">✧</div>
+              <p class="eyebrow">A MOMENT FOR YOU</p>
+              <h2 id="tip-title">Pause. Breathe. Reset.</h2>
+              <p>Take three slow breaths. A mindful moment can help you reconnect with how you’re feeling.</p>
+              <span class="tip-stars" aria-hidden="true">✦ &nbsp; · &nbsp; ✦</span>
+            </section>
+
+            <section class="notice-card" aria-labelledby="notice-title">
+              <span class="notice-icon" aria-hidden="true">ⓘ</span>
+              <div>
+                <h2 id="notice-title">Demo wellness tool</h2>
+                <p>SapphireUSX is a student project demo. It does not diagnose, monitor real health, or replace medical advice. The readings above are sample data only. For health concerns, contact your qualified medical team.</p>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </main>
+
+      <footer class="footer">
+        <span><span class="footer-star" aria-hidden="true">✦</span> SAPPHIREUSX</span>
+        <span>Made for the journey, together.</span>
+        <span>NASA Space Apps · Demo</span>
+      </footer>
+    </div>
+  </body>
+</html>
