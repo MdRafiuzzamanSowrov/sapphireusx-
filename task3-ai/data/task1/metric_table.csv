@@ -1,0 +1,20 @@
+indicator,unit,normal_low,normal_high,direction_of_concern,impossible_if,sampling,collection_method,when_to_apply,source,source_url,notes
+heart_rate,bpm,51,90,both,<= 0,every 1 min,sensor,context = awake,"Royal College of Physicians. National Early Warning Score (NEWS) 2. London: RCP, 2017 (score 0 band)",https://www.rcp.ac.uk/resources/national-early-warning-score-news-2/,"Exercise, recovery and sleep sit outside this band normally. See daily_schedule.csv."
+heart_rate_variability,ms,,,,< 0,every 5 min,sensor,,,,No sourced range. Use deviation from personal baseline.
+blood_oxygen_spo2,%,96,100,low,< 0 or > 100,every 5 min,sensor,any context,"Royal College of Physicians. National Early Warning Score (NEWS) 2. London: RCP, 2017 (score 0 band)",https://www.rcp.ac.uk/resources/national-early-warning-score-news-2/,"Upper limit of 100 is by definition, not from the source."
+respiratory_rate,breaths/min,12,20,both,<= 0,every 5 min,sensor,context = awake or asleep,"Royal College of Physicians. National Early Warning Score (NEWS) 2. London: RCP, 2017 (score 0 band)",https://www.rcp.ac.uk/resources/national-early-warning-score-news-2/,Rises during exercise and recovery.
+body_temperature,degC,36.1,38.0,both,,every 15 min,sensor,any context,"Royal College of Physicians. National Early Warning Score (NEWS) 2. London: RCP, 2017 (score 0 band)",https://www.rcp.ac.uk/resources/national-early-warning-score-news-2/,"No sourced plausibility limit, so impossible_if is blank."
+blood_pressure_systolic,mmHg,111,119,both,<= 0,07:30 and 19:30,sensor,resting reading,"Royal College of Physicians. National Early Warning Score (NEWS) 2. London: RCP, 2017 (score 0 band); American Heart Association. Understanding Blood Pressure Readings (Normal category)",https://www.rcp.ac.uk/resources/national-early-warning-score-news-2/ ; https://www.heart.org/bplevels,"Low side from NEWS2, high side from AHA. 120-129 is only 'Elevated', so many healthy readings fall just above this band."
+blood_pressure_diastolic,mmHg,,79,high,<= 0,07:30 and 19:30,sensor,resting reading,American Heart Association. Understanding Blood Pressure Readings (Normal category),https://www.heart.org/bplevels,No sourced lower limit.
+sleep_duration,hours,7,,low,< 0 or > 24,daily at 07:00,sensor,per night,"Watson NF et al. AASM and Sleep Research Society consensus statement. SLEEP, 2015",https://aasm.org/seven-or-more-hours-of-sleep-per-night-a-health-necessity-for-adults/,"Astronauts averaged about 6 h on ISS missions (Barger et al., Lancet Neurology, 2014), so expect this to flag often."
+sleep_quality,score_1_to_5,,,,not a whole number from 1 to 5,daily at 07:00,manual,,,,"No sourced range. Use deviation from personal baseline. 1 = poor, 5 = excellent."
+exercise_time,min/day,,,,< 0 or > 1440,daily at 21:00,sensor,,,,No sourced range. Use deviation from personal baseline.
+water_intake,L/day,,,,< 0,daily at 21:00,manual,,,,No sourced range. Use deviation from personal baseline.
+radiation_dose_cumulative,mSv,,,,"< 0, or lower than the previous day",daily at 21:00,sensor,,,,"No sourced range. Use deviation from personal baseline. Running total, so it can only go up."
+stress_score,score_1_to_5,,,,not a whole number from 1 to 5,daily at 21:00,manual,,,,"No sourced range. Use deviation from personal baseline. 1 = calm, 5 = very stressed."
+fatigue_score,score_1_to_5,,,,not a whole number from 1 to 5,daily at 21:00,manual,,,,"No sourced range. Use deviation from personal baseline. 1 = fresh, 5 = exhausted."
+symptom_headache,yes_no,,,,not 0 or 1,daily at 21:00,manual,,,,Any 1 is a symptom report.
+symptom_nausea,yes_no,,,,not 0 or 1,daily at 21:00,manual,,,,Any 1 is a symptom report.
+symptom_vision_change,yes_no,,,,not 0 or 1,daily at 21:00,manual,,,,Any 1 is a symptom report.
+symptom_back_pain,yes_no,,,,not 0 or 1,daily at 21:00,manual,,,,Any 1 is a symptom report.
+body_mass,kg,,,,<= 0,mission days 1 and 8,manual,,,,No sourced range. Use deviation from personal baseline.

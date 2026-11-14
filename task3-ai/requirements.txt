@@ -1,0 +1,11 @@
+# Direct dependencies of the Task 3 AI module (lower bounds only).
+# For the exact versions used in the submission run, inside the project venv:
+#   pip freeze > requirements-lock.txt
+pandas>=2.2
+numpy>=1.26
+scipy>=1.11
+scikit-learn>=1.4
+matplotlib>=3.8
+seaborn>=0.13
+pyyaml>=6.0
+jsonschema>=4.20
