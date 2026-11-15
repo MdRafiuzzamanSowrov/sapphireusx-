@@ -56,6 +56,13 @@ def test_impossible_values_are_invalid():
         assert r["quality_status"] == "invalid" and r["dq_reasons"] == "impossible_value", (metric, value)
 
 
+def test_device_marked_valid_does_not_override_impossible_values():
+    rows = [one("HEART_RATE", 0), one("BLOOD_OXYGEN_SPO2", 127), one("STRESS_SCORE", 9)]
+    assert [r["device_quality_status"] for r in rows] == ["valid"] * 3
+    assert [r["quality_status"] for r in rows] == ["invalid"] * 3
+    assert [r["dq_reasons"] for r in rows] == ["impossible_value", "impossible_value", "out_of_scale"]
+
+
 def test_out_of_scale_values_are_invalid():
     for metric, value in [("STRESS_SCORE", 9), ("STRESS_SCORE", 2.5), ("STRESS_SCORE", 0), ("SYMPTOM_HEADACHE", 2)]:
         r = one(metric, value)
@@ -69,6 +76,13 @@ def test_device_missing_invalid_and_empty_value():
     assert r["quality_status"] == "invalid" and r["dq_reasons"] == "device_invalid"
     r = one("HEART_RATE", np.nan, "valid")             # device says valid but there is no number
     assert r["quality_status"] == "missing" and r["dq_reasons"] == "empty_value"
+
+
+def test_device_invalid_plausible_value_is_excluded_from_usable_rows():
+    v = validate(mk([("A1", "BLOOD_OXYGEN_SPO2", 84, 0, "invalid"),
+                     ("A1", "BLOOD_OXYGEN_SPO2", 98, 1, "valid")]))
+    assert list(v["quality_status"]) == ["invalid", "valid"]
+    assert v.loc[0, "dq_reasons"] == "device_invalid"
 
 
 def test_unit_mismatch_and_unknown_metric():

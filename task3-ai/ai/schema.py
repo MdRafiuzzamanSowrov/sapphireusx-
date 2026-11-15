@@ -63,6 +63,68 @@ MEASUREMENT_JSON_SCHEMA = {
     },
 }
 
+_PROVENANCE_LABELS = ["SIMULATED DATA", "REAL NASA RESEARCH DATA", "USER-ENTERED DATA"]
+_BASELINE_JSON_PROPERTIES = {
+    "baseline_status": {"type": ["string", "null"], "enum": ["ok", "insufficient_history", "not_configured", None]},
+    "baseline_median": {"type": ["number", "null"]},
+    "baseline_mad": {"type": ["number", "null"]},
+    "baseline_scale": {"type": ["number", "null"]},
+    "baseline_n": {"type": ["integer", "null"], "minimum": 0},
+    "baseline_span_hours": {"type": ["number", "null"], "minimum": 0},
+    "baseline_as_of": {"type": ["string", "null"]},
+}
+_ANALYSIS_MEASUREMENT_PROPERTIES = {
+    **MEASUREMENT_JSON_SCHEMA["properties"],
+    "dq_reasons": {"type": "string"},
+    "data_label": {"enum": _PROVENANCE_LABELS},
+    **_BASELINE_JSON_PROPERTIES,
+}
+
+# Proposed analysis envelope for local/backend review; the consuming backend has not approved it.
+ANALYSIS_RESULT_JSON_SCHEMA = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Astronaut health analysis result (proposed)",
+    "type": "object",
+    "required": ["schema_version", "measurements", "alerts"],
+    "additionalProperties": False,
+    "properties": {
+        "schema_version": {"const": "1.0"},
+        "measurements": {
+            "type": "array",
+            "items": {"type": "object", "required": list(_ANALYSIS_MEASUREMENT_PROPERTIES),
+                      "additionalProperties": False, "properties": _ANALYSIS_MEASUREMENT_PROPERTIES},
+        },
+        "alerts": {
+            "type": "array",
+            "items": {
+                "type": "object", "additionalProperties": False,
+                "required": ["astronaut_code", "metric_code", "measured_at", "value", "unit", "context",
+                             "priority", "findings", "data_label", "baseline_status", "baseline_median",
+                             "baseline_mad", "baseline_scale", "baseline_n", "baseline_span_hours", "baseline_as_of"],
+                "properties": {
+                    "astronaut_code": {"type": "string", "minLength": 1},
+                    "metric_code": {"type": "string", "pattern": "^[A-Z0-9_]+$"},
+                    "measured_at": {"type": "string", "format": "date-time"},
+                    "value": {"type": "number"}, "unit": {"type": "string"},
+                    "context": {"enum": list(CONTEXTS)}, "priority": {"enum": ["LOW", "MEDIUM", "HIGH"]},
+                    "findings": {"type": "array", "items": {"type": "object"}},
+                    "data_label": {"enum": _PROVENANCE_LABELS},
+                    **_BASELINE_JSON_PROPERTIES,
+                },
+            },
+        },
+    },
+}
+
+
+def validate_analysis_payload(payload: dict) -> None:
+    """Raise jsonschema.ValidationError if a proposed analysis envelope is malformed."""
+    try:
+        import jsonschema
+    except ImportError as exc:  # pragma: no cover - declared project dependency
+        raise RuntimeError("jsonschema is required to validate analysis payloads") from exc
+    jsonschema.validate(payload, ANALYSIS_RESULT_JSON_SCHEMA)
+
 
 def validate_measurement_record(rec: dict) -> list[str]:
     """Return a list of problems with one measurement dict (empty list = OK)."""
