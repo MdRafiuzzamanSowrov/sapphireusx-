@@ -263,6 +263,63 @@ function OverviewScreen({ sampleIndex }: { sampleIndex: number }) {
             Synthetic demo data updates every 5 seconds.
           </p>
         </div>
+        <div className="hero-visual" aria-hidden="true">
+          <svg className="hero-art" viewBox="0 0 360 270" focusable="false">
+            <defs>
+              <radialGradient id="hero-halo">
+                <stop stopColor="#0d6083" stopOpacity=".45" />
+                <stop offset="1" stopColor="#0d6083" stopOpacity="0" />
+              </radialGradient>
+              <linearGradient id="hero-visor" x1="0" x2="1" y1="0" y2="1">
+                <stop stopColor="#0a2940" />
+                <stop offset="1" stopColor="#0b6178" />
+              </linearGradient>
+              <filter id="hero-pulse-glow" x="-20%" y="-80%" width="140%" height="260%">
+                <feGaussianBlur stdDeviation="3" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+            <ellipse cx="192" cy="235" rx="67" ry="12" fill="#020711" fillOpacity=".65" />
+            <circle className="hero-halo" cx="190" cy="132" r="127" />
+            <path
+              className="hero-pulse"
+              d="M4 151h68l14-17 17 34 22-62 24 94 21-48h39l15-19 16 37 15-19h101"
+            />
+            <circle className="hero-pulse-node" cx="119" cy="106" r="3" />
+            <circle className="hero-pulse-node" cx="256" cy="179" r="3" />
+            <g className="hero-robot">
+              <path
+                className="hero-robot-suit"
+                d="m148 127-30 9-24 29 10 12 27-19 24-5m57-26 28 8 25 27-10 12-28-18-22-5"
+              />
+              <path
+                className="hero-robot-suit"
+                d="m151 185-8 43 18 5 17-39m29-9 13 43-17 7-22-38"
+              />
+              <path className="hero-robot-boot" d="m143 225 18 3 2 14-31 1c-5 0-7-5-3-9zm56 3 17-5 8 12c2 4-1 8-6 8l-29-2z" />
+              <path
+                className="hero-robot-suit"
+                d="M145 117c-7 7-12 17-13 30l-2 35c0 8 6 14 14 14h81c8 0 14-6 14-14l-2-35c-1-13-6-23-13-30z"
+              />
+              <path className="hero-robot-panel" d="M160 148h47v31h-47z" />
+              <path className="hero-robot-pulse" d="M165 164h9l5-8 7 15 7-12 5 5h4" />
+              <circle className="hero-robot-light" cx="215" cy="154" r="4" />
+              <circle className="hero-robot-light" cx="215" cy="169" r="4" />
+              <path className="hero-robot-collar" d="M151 116c7-8 18-12 34-12s27 4 34 12l-7 11h-54z" />
+              <circle className="hero-robot-helmet" cx="185" cy="70" r="49" />
+              <rect className="hero-robot-visor" x="151" y="43" width="68" height="54" rx="25" />
+              <circle className="hero-robot-eye" cx="173" cy="68" r="4" />
+              <circle className="hero-robot-eye" cx="197" cy="68" r="4" />
+              <path className="hero-robot-mouth" d="M174 82h22" />
+              <path className="hero-robot-antenna" d="M185 20V9" />
+              <circle className="hero-robot-light" cx="185" cy="7" r="4" />
+              <path className="hero-robot-detail" d="m136 140-13 5m116-5 13 5M146 188l-1 8m81-8 1 8" />
+            </g>
+          </svg>
+        </div>
         <div
           className="mission-clock"
           aria-label={`Synthetic sample set ${sampleIndex + 1}`}
@@ -518,7 +575,7 @@ function getTrendSeries(
     return [
       {
         label: 'Systolic demo',
-        color: '#0B3D91',
+        color: '#37D9F4',
         baseline: getValue(0),
         values: points.map((point) =>
           point.sampleIndex === null ? null : getValue(point.sampleIndex),
@@ -526,7 +583,7 @@ function getTrendSeries(
       },
       {
         label: 'Diastolic demo',
-        color: '#4F78B8',
+        color: '#84E8FB',
         baseline: getValue(0, 1),
         values: points.map((point) =>
           point.sampleIndex === null ? null : getValue(point.sampleIndex, 1),
@@ -538,7 +595,7 @@ function getTrendSeries(
   return [
     {
       label: 'Synthetic demo readings',
-      color: '#0B3D91',
+      color: '#37D9F4',
       baseline: getValue(0),
       values: points.map((point) =>
         point.sampleIndex === null ? null : getValue(point.sampleIndex),
