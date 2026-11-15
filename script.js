@@ -377,7 +377,8 @@ function clearCheckinError(input, messageElement) {
   checkinFormMessage.classList.remove("form-message-error");
 }
 
-function previewCheckin() {
+async function submitCheckin(event) {
+  event.preventDefault();
   const sleepValue = checkinSleep.value.trim();
   const symptomsValue = checkinSymptoms.value.trim();
   const sleepError = !sleepValue
@@ -416,12 +417,37 @@ function previewCheckin() {
     return;
   }
 
-  checkinFormMessage.textContent = "Preview complete. Nothing was saved or sent.";
+  checkinFormMessage.textContent = "Sending check-in…";
   checkinFormMessage.classList.remove("form-message-error");
+  checkinPreviewButton.disabled = true;
+  try {
+    const response = await fetch("http://127.0.0.1:8000/api/checkins", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        astronaut_id: 1,
+        sleep_hours: Number(sleepValue),
+        mood: checkinMood.value,
+        symptoms: symptomsValue,
+      }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(result.detail || `Server returned HTTP ${response.status}.`);
+    }
+    checkinFormMessage.textContent = "Check-in saved successfully to the backend.";
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : "Unknown error.";
+    checkinFormMessage.textContent = detail === "Failed to fetch"
+      ? "Could not reach the backend. Make sure it is running on http://127.0.0.1:8000."
+      : `Could not save the check-in: ${detail}`;
+    checkinFormMessage.classList.add("form-message-error");
+  } finally {
+    checkinPreviewButton.disabled = false;
+  }
 }
 
-checkinForm.addEventListener("submit", (event) => event.preventDefault());
-checkinPreviewButton.addEventListener("click", previewCheckin);
+checkinForm.addEventListener("submit", submitCheckin);
 
 alertAcknowledgementButtons.forEach((button) => {
   button.addEventListener("click", () => {

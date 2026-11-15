@@ -1,125 +1,43 @@
 import { useEffect, useState } from 'react'
 
-const SAMPLE_INTERVAL_MS = 5000
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000').replace(/\/$/, '')
 
-const sampleReadings = [
-  {
-    heartRate: '72',
-    heartRateVariability: '42',
-    bloodOxygen: '98',
-    bloodPressure: '118/76',
-    respiratoryRate: '16',
-    bodyTemperature: '36.8',
-  },
-  {
-    heartRate: '74',
-    heartRateVariability: '45',
-    bloodOxygen: '97',
-    bloodPressure: '120/78',
-    respiratoryRate: '17',
-    bodyTemperature: '36.9',
-  },
-  {
-    heartRate: '70',
-    heartRateVariability: '39',
-    bloodOxygen: '99',
-    bloodPressure: '116/74',
-    respiratoryRate: '15',
-    bodyTemperature: '36.7',
-  },
-] as const
-
-const sampleSyncTimes = ['14:30:00 UTC', '14:30:05 UTC', '14:30:10 UTC'] as const
-
-const sampleMetrics = [
-  {
-    icon: '♡',
-    iconClass: 'heart-rate-icon',
-    key: 'heartRate',
-    label: 'Heart rate',
-    unit: 'bpm',
-  },
-  {
-    icon: '↔',
-    iconClass: 'hrv-icon',
-    key: 'heartRateVariability',
-    label: 'Heart rate variability',
-    unit: 'ms',
-  },
-  {
-    icon: '◉',
-    iconClass: 'spo2-icon',
-    key: 'bloodOxygen',
-    label: 'Blood oxygen (SpO₂)',
-    unit: '%',
-  },
-  {
-    icon: '↕',
-    iconClass: 'blood-pressure-icon',
-    key: 'bloodPressure',
-    label: 'Blood pressure',
-    unit: 'mmHg',
-  },
-  {
-    icon: '≈',
-    iconClass: 'respiratory-rate-icon',
-    key: 'respiratoryRate',
-    label: 'Respiratory rate',
-    unit: 'breaths/min',
-  },
-  {
-    icon: '◦',
-    iconClass: 'temperature-icon',
-    key: 'bodyTemperature',
-    label: 'Body temperature',
-    unit: '°C',
-  },
-] as const
-
-const alertExamples = [
-  {
-    id: 'example-heart-rate',
-    severity: 'Low',
-    indicator: 'Heart rate',
-    time: 'Mission day 12 · 14:25 UTC',
-    value: '72',
-    unit: 'bpm',
-    reason: 'Fictional placeholder showing how a brief context note could appear.',
-    initiallyAcknowledged: true,
-  },
-  {
-    id: 'example-blood-oxygen',
-    severity: 'Moderate',
-    indicator: 'Blood oxygen (SpO₂)',
-    time: 'Mission day 12 · 14:20 UTC',
-    value: '98',
-    unit: '%',
-    reason: 'Manually written sample text; no reading or rule generated this card.',
-    initiallyAcknowledged: false,
-  },
-  {
-    id: 'example-body-temperature',
-    severity: 'High',
-    indicator: 'Body temperature',
-    time: 'Mission day 12 · 14:15 UTC',
-    value: '36.8',
-    unit: '°C',
-    reason: 'This example demonstrates a reason field and is not a real warning.',
-    initiallyAcknowledged: false,
-  },
-] as const
+const DEMO_ASTRONAUT_ID = 1
+const DEMO_ASTRONAUT_IDS = [1, 2, 3, 4, 5]
 
 type ScreenId = 'overview' | 'trends' | 'alerts' | 'check-in' | 'sources' | 'about'
-type MetricKey = (typeof sampleMetrics)[number]['key']
 type TrendRange = '6h' | '24h' | '7d'
-type TrendPoint = { timestamp: string; sampleIndex: number | null }
-type TrendSeries = {
-  label: string
-  color: string
-  baseline: number
-  values: (number | null)[]
+type Indicator = { code: string; name: string; category: string; unit: string; ref_low: number | null; ref_high: number | null }
+type SummaryReading = { indicator_code: string; name: string; unit: string; ref_low: number | null; ref_high: number | null; value: number; measured_at: string; source_kind: string }
+type HistoryReading = { bucket: string; avg: number | null; min: number | null; max: number | null; n: number }
+type ApiAlert = {
+  id: number
+  astronaut_id: number
+  indicator_code: string | null
+  severity: 'info' | 'watch' | 'warning' | 'critical'
+  title: string
+  message: string
+  model_name: string | null
+  confidence: number | null
+  generated_at: string
+  status: 'new' | 'acknowledged' | 'dismissed' | 'resolved'
 }
 
+async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, init)
+  const body = await response.json().catch(() => ({})) as { detail?: string }
+  if (!response.ok) throw new Error(body.detail || `Backend returned HTTP ${response.status}.`)
+  return body as T
+}
+
+function displayTime(value: string) {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString()
+}
+
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'Unexpected error.'
+}
 const screens: { id: ScreenId; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'trends', label: 'Trends' },
@@ -129,66 +47,13 @@ const screens: { id: ScreenId; label: string }[] = [
   { id: 'about', label: 'About' },
 ]
 
-const trendRanges: Record<TrendRange, { label: string; points: TrendPoint[] }> = {
-  '6h': {
-    label: '6 hours',
-    points: [
-      { timestamp: 'D12 09:00', sampleIndex: 0 },
-      { timestamp: 'D12 10:30', sampleIndex: 1 },
-      { timestamp: 'D12 12:00', sampleIndex: null },
-      { timestamp: 'D12 13:30', sampleIndex: 2 },
-      { timestamp: 'D12 15:00', sampleIndex: 0 },
-    ],
-  },
-  '24h': {
-    label: '24 hours',
-    points: [
-      { timestamp: 'D11 23:59', sampleIndex: 0 },
-      { timestamp: 'D12 06:00', sampleIndex: 1 },
-      { timestamp: 'D12 12:00', sampleIndex: null },
-      { timestamp: 'D12 18:00', sampleIndex: 2 },
-      { timestamp: 'D12 23:59', sampleIndex: 0 },
-    ],
-  },
-  '7d': {
-    label: '7 days',
-    points: [
-      { timestamp: 'D05 12:00', sampleIndex: 0 },
-      { timestamp: 'D06 12:00', sampleIndex: 1 },
-      { timestamp: 'D07 12:00', sampleIndex: 2 },
-      { timestamp: 'D08 12:00', sampleIndex: 0 },
-      { timestamp: 'D09 12:00', sampleIndex: null },
-      { timestamp: 'D10 12:00', sampleIndex: 2 },
-      { timestamp: 'D11 12:00', sampleIndex: 1 },
-      { timestamp: 'D12 12:00', sampleIndex: 0 },
-    ],
-  },
-}
-
 function getScreenFromHash(): ScreenId {
   const hash = window.location.hash.slice(1)
   return screens.find((screen) => screen.id === hash)?.id ?? 'overview'
 }
 
-function isMetricKey(value: string): value is MetricKey {
-  return sampleMetrics.some((metric) => metric.key === value)
-}
-
-function isTrendRange(value: string): value is TrendRange {
-  return value === '6h' || value === '24h' || value === '7d'
-}
-
 function App() {
-  const [sampleIndex, setSampleIndex] = useState(0)
   const [activeScreen, setActiveScreen] = useState<ScreenId>(getScreenFromHash)
-
-  useEffect(() => {
-    const intervalId = window.setInterval(() => {
-      setSampleIndex((currentIndex) => (currentIndex + 1) % sampleReadings.length)
-    }, SAMPLE_INTERVAL_MS)
-
-    return () => window.clearInterval(intervalId)
-  }, [])
 
   useEffect(() => {
     const syncScreen = () => setActiveScreen(getScreenFromHash())
@@ -207,7 +72,7 @@ function App() {
         </a>
         <div className="mission-tag">
           <span className="status-dot" aria-hidden="true" />
-          <span>DEMO MODE</span>
+          <span>LOCAL DATA</span>
         </div>
       </header>
 
@@ -224,9 +89,7 @@ function App() {
       </nav>
 
       <main id="main-content" tabIndex={-1}>
-        {activeScreen === 'overview' && (
-          <OverviewScreen sampleIndex={sampleIndex} />
-        )}
+        {activeScreen === 'overview' && <OverviewScreen />}
         {activeScreen === 'trends' && <TrendsScreen />}
         {activeScreen === 'alerts' && <AlertsScreen />}
         {activeScreen === 'check-in' && <CheckInScreen />}
@@ -241,144 +104,91 @@ function App() {
           </span>{' '}
           SAPPHIREUSX
         </span>
-        <span>{screens.find((screen) => screen.id === activeScreen)?.label} · Synthetic demo data</span>
+        <span>{screens.find((screen) => screen.id === activeScreen)?.label} · Local backend data</span>
         <span>Prototype</span>
       </footer>
     </div>
   )
 }
 
-function OverviewScreen({ sampleIndex }: { sampleIndex: number }) {
-  const currentReadings = sampleReadings[sampleIndex]
+function OverviewScreen() {
+  const [readings, setReadings] = useState<SummaryReading[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  async function loadSummary() {
+    setError('')
+    try {
+      const result = await apiRequest<{ astronaut_id: number; latest: SummaryReading[] }>(
+        `/api/astronauts/${DEMO_ASTRONAUT_ID}/summary`,
+      )
+      setReadings(result.latest)
+    } catch (loadError) {
+      setError(errorMessage(loadError))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    let active = true
+    void apiRequest<{ astronaut_id: number; latest: SummaryReading[] }>(`/api/astronauts/${DEMO_ASTRONAUT_ID}/summary`)
+      .then((result) => { if (active) setReadings(result.latest) })
+      .catch((loadError: unknown) => { if (active) setError(errorMessage(loadError)) })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [])
+
+  function refreshSummary() {
+    setLoading(true)
+    void loadSummary()
+  }
+
+  const latestTimestamp = readings.reduce<string | null>((latest, reading) =>
+    latest === null || reading.measured_at > latest ? reading.measured_at : latest, null)
 
   return (
     <>
       <section className="welcome" aria-labelledby="welcome-title">
         <div className="welcome-copy">
-          <p className="eyebrow">CREW WELLNESS · OVERVIEW</p>
-          <h1 id="welcome-title">
-            <span>Demo Mode</span> overview.
-          </h1>
-          <p className="welcome-subtitle">
-            Synthetic demo data updates every 5 seconds.
-          </p>
+          <p className="eyebrow">CREW WELLNESS · BACKEND DATA</p>
+          <h1 id="welcome-title"><span>Demo Astronaut 1</span> overview.</h1>
+          <p className="welcome-subtitle">Latest measurements stored in the SapphireUSX backend.</p>
         </div>
-        <div className="hero-visual" aria-hidden="true">
-          <svg className="hero-art" viewBox="0 0 360 270" focusable="false">
-            <defs>
-              <radialGradient id="hero-halo">
-                <stop stopColor="#0d6083" stopOpacity=".45" />
-                <stop offset="1" stopColor="#0d6083" stopOpacity="0" />
-              </radialGradient>
-              <linearGradient id="hero-visor" x1="0" x2="1" y1="0" y2="1">
-                <stop stopColor="#0a2940" />
-                <stop offset="1" stopColor="#0b6178" />
-              </linearGradient>
-              <filter id="hero-pulse-glow" x="-20%" y="-80%" width="140%" height="260%">
-                <feGaussianBlur stdDeviation="3" result="blur" />
-                <feMerge>
-                  <feMergeNode in="blur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-            </defs>
-            <ellipse cx="192" cy="235" rx="67" ry="12" fill="#020711" fillOpacity=".65" />
-            <circle className="hero-halo" cx="190" cy="132" r="127" />
-            <path
-              className="hero-pulse"
-              d="M4 151h68l14-17 17 34 22-62 24 94 21-48h39l15-19 16 37 15-19h101"
-            />
-            <circle className="hero-pulse-node" cx="119" cy="106" r="3" />
-            <circle className="hero-pulse-node" cx="256" cy="179" r="3" />
-            <g className="hero-robot">
-              <path
-                className="hero-robot-suit"
-                d="m148 127-30 9-24 29 10 12 27-19 24-5m57-26 28 8 25 27-10 12-28-18-22-5"
-              />
-              <path
-                className="hero-robot-suit"
-                d="m151 185-8 43 18 5 17-39m29-9 13 43-17 7-22-38"
-              />
-              <path className="hero-robot-boot" d="m143 225 18 3 2 14-31 1c-5 0-7-5-3-9zm56 3 17-5 8 12c2 4-1 8-6 8l-29-2z" />
-              <path
-                className="hero-robot-suit"
-                d="M145 117c-7 7-12 17-13 30l-2 35c0 8 6 14 14 14h81c8 0 14-6 14-14l-2-35c-1-13-6-23-13-30z"
-              />
-              <path className="hero-robot-panel" d="M160 148h47v31h-47z" />
-              <path className="hero-robot-pulse" d="M165 164h9l5-8 7 15 7-12 5 5h4" />
-              <circle className="hero-robot-light" cx="215" cy="154" r="4" />
-              <circle className="hero-robot-light" cx="215" cy="169" r="4" />
-              <path className="hero-robot-collar" d="M151 116c7-8 18-12 34-12s27 4 34 12l-7 11h-54z" />
-              <circle className="hero-robot-helmet" cx="185" cy="70" r="49" />
-              <rect className="hero-robot-visor" x="151" y="43" width="68" height="54" rx="25" />
-              <circle className="hero-robot-eye" cx="173" cy="68" r="4" />
-              <circle className="hero-robot-eye" cx="197" cy="68" r="4" />
-              <path className="hero-robot-mouth" d="M174 82h22" />
-              <path className="hero-robot-antenna" d="M185 20V9" />
-              <circle className="hero-robot-light" cx="185" cy="7" r="4" />
-              <path className="hero-robot-detail" d="m136 140-13 5m116-5 13 5M146 188l-1 8m81-8 1 8" />
-            </g>
-          </svg>
-        </div>
-        <div
-          className="mission-clock"
-          aria-label={`Synthetic sample set ${sampleIndex + 1}`}
-        >
-          <span className="clock-label">SAMPLE SET</span>
-          <span className="clock-value">
-            {String(sampleIndex + 1).padStart(2, '0')}
-          </span>
-          <span className="clock-note">SYNTHETIC</span>
+        <div className="mission-clock" aria-label="Backend astronaut profile">
+          <span className="clock-label">PROFILE</span>
+          <span className="clock-value">01</span>
+          <span className="clock-note">LOCAL DEMO</span>
         </div>
       </section>
 
-      <dl className="overview-meta" aria-label="Fictional demo mission details">
-        <div>
-          <dt>Fictional demo astronaut ID</dt>
-          <dd>AST-001</dd>
-        </div>
-        <div>
-          <dt>Mission day (demo)</dt>
-          <dd>Day 12</dd>
-        </div>
-        <div>
-          <dt>Last data sync (synthetic demo time)</dt>
-          <dd className="demo-sync-time">{sampleSyncTimes[sampleIndex]}</dd>
-        </div>
-        <div>
-          <dt>Data quality (demo only)</dt>
-          <dd>Synthetic sample · not validated</dd>
-        </div>
+      <dl className="overview-meta" aria-label="Backend data details">
+        <div><dt>Astronaut profile</dt><dd>CDR-01 · Demo</dd></div>
+        <div><dt>Measurements returned</dt><dd>{readings.length}</dd></div>
+        <div><dt>Latest measurement</dt><dd>{latestTimestamp ? displayTime(latestTimestamp) : 'No data'}</dd></div>
+        <div><dt>Data location</dt><dd>Local SapphireUSX API</dd></div>
       </dl>
 
       <section className="dashboard-section" aria-labelledby="snapshot-title">
         <div className="section-heading">
-          <div>
-            <p className="eyebrow">SYNTHETIC DEMO DATA</p>
-            <h2 id="snapshot-title">Today at a glance</h2>
-          </div>
-          <span className="sample-label">
-            <span aria-hidden="true">●</span> Updates every 5 seconds
-          </span>
+          <div><p className="eyebrow">STORED MEASUREMENTS</p><h2 id="snapshot-title">Latest readings</h2></div>
+          <button className="alert-ack-button" type="button" onClick={refreshSummary} disabled={loading}>
+            {loading ? 'Loading…' : 'Refresh readings'}
+          </button>
         </div>
-
+        {error && <p className="alert-demo-notice form-message-error" role="alert">Could not load backend readings: {error}</p>}
+        {loading && readings.length === 0 && <p className="metric-note">Loading measurements from the backend…</p>}
+        {!loading && !error && readings.length === 0 && <p className="metric-note">No measurements are stored for this profile yet.</p>}
         <div className="metrics-grid">
-          {sampleMetrics.map((metric) => (
-            <article className="metric-card" key={metric.label}>
+          {readings.map((reading) => (
+            <article className="metric-card" key={reading.indicator_code}>
               <div className="metric-top">
-                <span
-                  className={`metric-icon ${metric.iconClass}`}
-                  aria-hidden="true"
-                >
-                  {metric.icon}
-                </span>
-                <span className="trend neutral">SYNTHETIC</span>
+                <span className="metric-icon heart-rate-icon" aria-hidden="true">◉</span>
+                <span className="trend neutral">{reading.source_kind.replace('_', ' ').toUpperCase()}</span>
               </div>
-              <p className="metric-label">{metric.label}</p>
-              <p className="metric-value">
-                {currentReadings[metric.key]} <span>{metric.unit}</span>
-              </p>
-              <p className="metric-note">Synthetic demo data</p>
+              <p className="metric-label">{reading.name}</p>
+              <p className="metric-value">{Number.isInteger(reading.value) ? reading.value : reading.value.toFixed(1)} <span>{reading.unit}</span></p>
+              <p className="metric-note">Recorded {displayTime(reading.measured_at)}</p>
             </article>
           ))}
         </div>
@@ -386,458 +196,232 @@ function OverviewScreen({ sampleIndex }: { sampleIndex: number }) {
 
       <div className="content-grid">
         <section className="checkin-card" aria-labelledby="data-note-title">
-          <div className="card-heading">
-            <div>
-              <p className="eyebrow">ABOUT THIS OVERVIEW</p>
-              <h2 id="data-note-title">Synthetic demo data</h2>
-            </div>
-            <span className="checkin-sparkle" aria-hidden="true">
-              ✧
-            </span>
-          </div>
-          <p className="form-intro">
-            Readings cycle through fabricated demo values every five seconds
-            while this page is open. Closing or refreshing the page ends the
-            timer. The samples are not from NASA, a spacecraft, or a real
-            person.
-          </p>
+          <div className="card-heading"><div><p className="eyebrow">DATA PROVENANCE</p><h2 id="data-note-title">Demo database</h2></div></div>
+          <p className="form-intro">Seeded records are simulated examples. Check-ins submitted through this app are stored as self-reported demo data. Nothing here is a live spacecraft feed or a medical record.</p>
         </section>
-
-        <aside className="side-column" aria-label="Prototype information">
-          <PrototypeNotice />
-        </aside>
+        <aside className="side-column" aria-label="Prototype information"><PrototypeNotice /></aside>
       </div>
     </>
   )
 }
-
 function TrendsScreen() {
-  const [selectedMetricKey, setSelectedMetricKey] =
-    useState<MetricKey>('heartRate')
-  const [selectedRange, setSelectedRange] = useState<TrendRange>('24h')
-  const selectedMetric = sampleMetrics.find(
-    (metric) => metric.key === selectedMetricKey,
-  )
+  const [indicators, setIndicators] = useState<Indicator[]>([])
+  const [selectedCode, setSelectedCode] = useState('')
+  const [selectedRange, setSelectedRange] = useState<TrendRange>('7d')
+  const [readings, setReadings] = useState<HistoryReading[]>([])
+  const [loadingIndicators, setLoadingIndicators] = useState(true)
+  const [loadingReadings, setLoadingReadings] = useState(true)
+  const [error, setError] = useState('')
+  const selectedMetric = indicators.find((indicator) => indicator.code === selectedCode)
 
-  if (!selectedMetric) {
-    throw new Error(`Unknown synthetic trend metric: ${selectedMetricKey}`)
-  }
+  useEffect(() => {
+    let active = true
+    void apiRequest<Indicator[]>('/api/indicators')
+      .then((result) => {
+        if (!active) return
+        setIndicators(result)
+        const firstCode = result.find((item) => item.code === 'heart_rate')?.code ?? result[0]?.code ?? ''
+        setSelectedCode(firstCode)
+        if (!firstCode) setLoadingReadings(false)
+      })
+      .catch((loadError: unknown) => {
+        if (active) {
+          setError(errorMessage(loadError))
+          setLoadingReadings(false)
+        }
+      })
+      .finally(() => { if (active) setLoadingIndicators(false) })
+    return () => { active = false }
+  }, [])
 
-  const trendPoints = trendRanges[selectedRange].points
-  const series = getTrendSeries(selectedMetricKey, trendPoints)
+  useEffect(() => {
+    if (!selectedCode) return
+    const controller = new AbortController()
+    const durationHours = selectedRange === '6h' ? 6 : selectedRange === '24h' ? 24 : 24 * 7
+    const start = new Date(Date.now() - durationHours * 60 * 60 * 1000).toISOString()
+    const bucket = selectedRange === '7d' ? 'day' : 'hour'
+    const query = new URLSearchParams({ bucket, start })
+    void apiRequest<HistoryReading[]>(
+      `/api/astronauts/${DEMO_ASTRONAUT_ID}/history/${encodeURIComponent(selectedCode)}?${query}`,
+      { signal: controller.signal },
+    )
+      .then((result) => setReadings(result))
+      .catch((loadError: unknown) => {
+        if (!controller.signal.aborted) setError(errorMessage(loadError))
+      })
+      .finally(() => { if (!controller.signal.aborted) setLoadingReadings(false) })
+    return () => controller.abort()
+  }, [selectedCode, selectedRange])
+
+  const rangeLabels: Record<TrendRange, string> = { '6h': '6 hours', '24h': '24 hours', '7d': '7 days' }
+  const validReadings = readings.filter((item) => item.avg !== null)
+  const sampleCount = validReadings.reduce((sum, item) => sum + item.n, 0)
+  const average = sampleCount
+    ? validReadings.reduce((sum, item) => sum + (item.avg ?? 0) * item.n, 0) / sampleCount
+    : null
 
   return (
-    <PageIntro
-      eyebrow="SYNTHETIC DEMO DATA"
-      title="Trends"
-      description="Illustrative synthetic samples with fictional timestamps, not real measurements over time."
-    >
+    <PageIntro eyebrow="BACKEND DATA" title="Trends" description="Recorded measurements for demo astronaut 1, loaded from the local backend.">
       <div className="trend-explorer">
         <div className="trend-controls">
-          <label>
-            Health indicator
-            <select
-              id="trend-metric"
-              value={selectedMetricKey}
-              onChange={(event) => {
-                const value = event.currentTarget.value
-                if (!isMetricKey(value)) {
-                  throw new Error(`Unknown synthetic trend metric: ${value}`)
-                }
-                setSelectedMetricKey(value)
-              }}
-            >
-              {sampleMetrics.map((metric) => (
-                <option key={metric.key} value={metric.key}>
-                  {metric.label}
-                </option>
-              ))}
+          <label>Health indicator
+            <select value={selectedCode} onChange={(event) => { setError(''); setLoadingReadings(true); setSelectedCode(event.currentTarget.value) }} disabled={loadingIndicators || indicators.length === 0}>
+              {indicators.map((indicator) => <option key={indicator.code} value={indicator.code}>{indicator.name}</option>)}
             </select>
           </label>
-          <label>
-            Time range
-            <select
-              id="trend-range"
-              value={selectedRange}
-              onChange={(event) => {
-                const value = event.currentTarget.value
-                if (!isTrendRange(value)) {
-                  throw new Error(`Unknown synthetic trend range: ${value}`)
-                }
-                setSelectedRange(value)
-              }}
-            >
-              {Object.entries(trendRanges).map(([range, details]) => (
-                <option key={range} value={range}>
-                  {details.label}
-                </option>
-              ))}
+          <label>Time range
+            <select value={selectedRange} onChange={(event) => { setError(''); setLoadingReadings(true); setSelectedRange(event.currentTarget.value as TrendRange) }}>
+              {(Object.keys(rangeLabels) as TrendRange[]).map((range) => <option key={range} value={range}>{rangeLabels[range]}</option>)}
             </select>
           </label>
         </div>
-
+        {error && <p className="alert-demo-notice" role="alert">Could not load backend trends: {error}</p>}
         <section className="trend-chart-card" aria-labelledby="trend-chart-title">
           <div className="trend-chart-heading">
-            <div>
-              <h2 id="trend-chart-title">{selectedMetric.label}</h2>
-              <p>Unit: {selectedMetric.unit} · Synthetic demo data</p>
-            </div>
-            <p className="trend-baseline">
-              Illustrative baseline: {sampleReadings[0][selectedMetricKey]}{' '}
-              {selectedMetric.unit}
-              <span>Not a clinical threshold</span>
-            </p>
+            <div><h2 id="trend-chart-title">{selectedMetric?.name ?? 'Measurements'}</h2><p>Unit: {selectedMetric?.unit ?? '—'} · Stored readings</p></div>
+            <p className="trend-baseline">{average === null ? 'No period average' : `Period average: ${average.toFixed(1)} ${selectedMetric?.unit ?? ''}`}<span>Descriptive summary, not a clinical threshold</span></p>
           </div>
-
-          <div
-            className="trend-chart-scroll"
-            role="region"
-            aria-label="Scrollable synthetic trend chart"
-            tabIndex={0}
-          >
-            <TrendChart
-              metricKey={selectedMetricKey}
-              metricLabel={selectedMetric.label}
-              rangeLabel={trendRanges[selectedRange].label}
-              points={trendPoints}
-              series={series}
-              unit={selectedMetric.unit}
-            />
-          </div>
-
-          <div className="trend-legend" aria-label="Chart legend">
-            {series.map((item) => (
-              <span key={item.label}>
-                <i className="legend-line" style={{ backgroundColor: item.color }} />
-                {item.label}
-              </span>
-            ))}
-            <span>
-              <i className="legend-line legend-baseline" />
-              Illustrative baseline
-            </span>
-          </div>
-          <p className="trend-gap-note">
-            A gap in the chart means <strong>No data</strong>; missing readings
-            are not shown as zero.
-          </p>
+          {loadingIndicators || loadingReadings
+            ? <p className="metric-note">Loading measurements from the backend…</p>
+            : readings.length === 0
+              ? <p className="metric-note">No measurements for this indicator and time range.</p>
+              : <div className="trend-chart-scroll" role="region" aria-label="Backend measurement trend chart" tabIndex={0}><TrendChart readings={readings} metricLabel={selectedMetric?.name ?? selectedCode} rangeLabel={rangeLabels[selectedRange]} unit={selectedMetric?.unit ?? ''} periodAverage={average ?? 0} /></div>}
+          {readings.length > 0 && <div className="trend-legend"><span><i className="legend-line" style={{ backgroundColor: '#37D9F4' }} />Recorded average</span><span><i className="legend-line legend-baseline" />Period average</span></div>}
+          <p className="trend-gap-note">Only measurements stored in the backend are plotted; empty ranges are shown as no data.</p>
         </section>
-
-        <div className="trend-table-wrap" role="region" aria-label="Trend data table" tabIndex={0}>
+        <div className="trend-table-wrap" role="region" aria-label="Backend trend data table" tabIndex={0}>
           <table className="trend-data-table">
-            <caption>
-              Synthetic illustrative samples for {selectedMetric.label} over{' '}
-              {trendRanges[selectedRange].label}
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">Fictional timestamp (UTC)</th>
-                <th scope="col">Reading ({selectedMetric.unit})</th>
-                <th scope="col">Illustrative baseline ({selectedMetric.unit})</th>
-              </tr>
-            </thead>
-            <tbody>
-              {trendPoints.map((point) => (
-                <tr key={point.timestamp}>
-                  <th scope="row">{point.timestamp}</th>
-                  <td>
-                    {point.sampleIndex === null
-                      ? 'No data'
-                      : sampleReadings[point.sampleIndex][selectedMetricKey]}
-                  </td>
-                  <td>{sampleReadings[0][selectedMetricKey]}</td>
-                </tr>
-              ))}
-            </tbody>
+            <caption>Stored readings for {selectedMetric?.name ?? selectedCode} over {rangeLabels[selectedRange]}</caption>
+            <thead><tr><th scope="col">Time bucket</th><th scope="col">Average ({selectedMetric?.unit ?? ''})</th><th scope="col">Minimum</th><th scope="col">Maximum</th><th scope="col">Samples</th></tr></thead>
+            <tbody>{readings.map((reading) => <tr key={reading.bucket}><th scope="row">{reading.bucket}</th><td>{reading.avg ?? '—'}</td><td>{reading.min ?? '—'}</td><td>{reading.max ?? '—'}</td><td>{reading.n}</td></tr>)}</tbody>
           </table>
         </div>
-        <p className="metric-note">
-          All sample values and timestamps are fabricated for demonstration.
-          They are not real measurements over time.
-        </p>
+        <p className="metric-note">Readings may be simulated seed data or self-reported entries. Their source is stored by the backend.</p>
       </div>
     </PageIntro>
   )
 }
 
-function getTrendSeries(
-  metricKey: MetricKey,
-  points: TrendPoint[],
-): TrendSeries[] {
-  const getValue = (sampleIndex: number, componentIndex = 0) => {
-    const reading = sampleReadings[sampleIndex][metricKey]
-    return metricKey === 'bloodPressure'
-      ? Number(reading.split('/')[componentIndex])
-      : Number(reading)
-  }
-
-  if (metricKey === 'bloodPressure') {
-    return [
-      {
-        label: 'Systolic demo',
-        color: '#37D9F4',
-        baseline: getValue(0),
-        values: points.map((point) =>
-          point.sampleIndex === null ? null : getValue(point.sampleIndex),
-        ),
-      },
-      {
-        label: 'Diastolic demo',
-        color: '#84E8FB',
-        baseline: getValue(0, 1),
-        values: points.map((point) =>
-          point.sampleIndex === null ? null : getValue(point.sampleIndex, 1),
-        ),
-      },
-    ]
-  }
-
-  return [
-    {
-      label: 'Synthetic demo readings',
-      color: '#37D9F4',
-      baseline: getValue(0),
-      values: points.map((point) =>
-        point.sampleIndex === null ? null : getValue(point.sampleIndex),
-      ),
-    },
-  ]
-}
-
-function TrendChart({
-  metricKey,
-  metricLabel,
-  rangeLabel,
-  points,
-  series,
-  unit,
-}: {
-  metricKey: MetricKey
-  metricLabel: string
-  rangeLabel: string
-  points: TrendPoint[]
-  series: TrendSeries[]
-  unit: string
-}) {
+function TrendChart({ readings, metricLabel, rangeLabel, unit, periodAverage }: { readings: HistoryReading[]; metricLabel: string; rangeLabel: string; unit: string; periodAverage: number }) {
   const chart = { width: 720, height: 300, left: 68, right: 705, top: 28, bottom: 220 }
-  const xPositions = points.map(
-    (_, index) =>
-      chart.left +
-      (index * (chart.right - chart.left)) / Math.max(points.length - 1, 1),
-  )
-  const plottedValues = series.flatMap((item) => [
-    item.baseline,
-    ...item.values.filter((value): value is number => value !== null),
-  ])
-  const rawMin = Math.min(...plottedValues)
-  const rawMax = Math.max(...plottedValues)
+  const values = readings.map((item) => item.avg)
+  const numericValues = values.filter((value): value is number => value !== null)
+  if (numericValues.length === 0) return <p className="metric-note">No numeric readings are available for this range.</p>
+  const rawMin = Math.min(...numericValues, periodAverage)
+  const rawMax = Math.max(...numericValues, periodAverage)
   const padding = rawMax === rawMin ? 1 : (rawMax - rawMin) * 0.2
   const min = rawMin - padding
   const max = rawMax + padding
-  const yPosition = (value: number) =>
-    chart.top + ((max - value) / (max - min)) * (chart.bottom - chart.top)
-  const formatValue = (value: number) =>
-    metricKey === 'bodyTemperature' ? value.toFixed(1) : String(Math.round(value))
-  const ticks = Array.from({ length: 4 }, (_, index) => {
-    const value = min + ((max - min) * index) / 3
-    return { value, y: yPosition(value) }
-  })
+  const xPositions = readings.map((_, index) => chart.left + index * (chart.right - chart.left) / Math.max(readings.length - 1, 1))
+  const yPosition = (value: number) => chart.top + ((max - value) / (max - min)) * (chart.bottom - chart.top)
+  const ticks = Array.from({ length: 4 }, (_, index) => { const value = min + ((max - min) * index) / 3; return { value, y: yPosition(value) } })
+  const line = values.map((value, index) => value === null ? null : `${index === 0 || values[index - 1] === null ? 'M' : 'L'} ${xPositions[index]} ${yPosition(value)}`)
+  const segments: string[] = []
+  let current: string[] = []
+  line.forEach((part) => { if (part === null) { if (current.length > 1) segments.push(current.join(' ')); current = [] } else current.push(part) })
+  if (current.length > 1) segments.push(current.join(' '))
+  const format = (value: number) => unit === '°C' ? value.toFixed(1) : Number.isInteger(value) ? String(value) : value.toFixed(1)
 
   return (
-    <svg
-      className="trend-chart"
-      viewBox={`0 0 ${chart.width} ${chart.height}`}
-      role="img"
-      aria-labelledby="trend-svg-title trend-svg-description"
-    >
-      <title id="trend-svg-title">
-        Synthetic illustrative {metricLabel} chart for {rangeLabel}
-      </title>
-      <desc id="trend-svg-description">
-        The dashed line is an illustrative baseline. A break in the sample line
-        marks a missing reading.
-      </desc>
-      {ticks.map((tick) => (
-        <g key={tick.value}>
-          <line
-            className="chart-grid-line"
-            x1={chart.left}
-            x2={chart.right}
-            y1={tick.y}
-            y2={tick.y}
-          />
-          <text className="chart-axis-label" x={chart.left - 10} y={tick.y + 4} textAnchor="end">
-            {formatValue(tick.value)}
-          </text>
-        </g>
-      ))}
-      {series.map((item) => (
-        <line
-          key={`${item.label}-baseline`}
-          className="chart-baseline-line"
-          stroke={item.color}
-          x1={chart.left}
-          x2={chart.right}
-          y1={yPosition(item.baseline)}
-          y2={yPosition(item.baseline)}
-        />
-      ))}
-      {series.map((item) => (
-        <g key={item.label}>
-          {getLineSegments(item.values, xPositions, yPosition).map((path, index) => (
-            <path
-              key={`${item.label}-segment-${index}`}
-              className="chart-series-line"
-              d={path}
-              stroke={item.color}
-            />
-          ))}
-          {item.values.map((value, index) =>
-            value === null ? null : (
-              <circle
-                key={`${item.label}-point-${index}`}
-                className="chart-series-point"
-                cx={xPositions[index]}
-                cy={yPosition(value)}
-                fill={item.color}
-                r="4"
-              >
-                <title>
-                  {points[index].timestamp}: {formatValue(value)} {unit}
-                </title>
-              </circle>
-            ),
-          )}
-        </g>
-      ))}
-      {points.map((point, index) => (
-        <text
-          key={point.timestamp}
-          className="chart-axis-label chart-time-label"
-          x={xPositions[index]}
-          y={chart.bottom + 27}
-          textAnchor="middle"
-        >
-          {point.timestamp}
-        </text>
-      ))}
-      <text className="chart-axis-title" x={chart.width / 2} y={chart.height - 8} textAnchor="middle">
-        Fictional timestamp (UTC)
-      </text>
-      <text className="chart-axis-title" x={chart.left} y={chart.top - 10}>
-        {unit}
-      </text>
+    <svg className="trend-chart" viewBox={`0 0 ${chart.width} ${chart.height}`} role="img" aria-label={`${metricLabel} measurements over ${rangeLabel}`}>
+      {ticks.map((tick) => <g key={tick.value}><line className="chart-grid-line" x1={chart.left} x2={chart.right} y1={tick.y} y2={tick.y} /><text className="chart-axis-label" x={chart.left - 10} y={tick.y + 4} textAnchor="end">{format(tick.value)}</text></g>)}
+      <line className="chart-baseline-line" x1={chart.left} x2={chart.right} y1={yPosition(periodAverage)} y2={yPosition(periodAverage)} />
+      {segments.map((path, index) => <path key={index} className="chart-series-line" d={path} stroke="#37D9F4" />)}
+      {readings.map((reading, index) => reading.avg === null ? null : <circle key={reading.bucket} className="chart-series-point" cx={xPositions[index]} cy={yPosition(reading.avg)} fill="#37D9F4" r="4"><title>{reading.bucket}: {format(reading.avg)} {unit}</title></circle>)}
+      {readings.map((reading, index) => <text key={reading.bucket} className="chart-axis-label chart-time-label" x={xPositions[index]} y={chart.bottom + 27} textAnchor="middle">{reading.bucket.slice(5, 16)}</text>)}
+      <text className="chart-axis-title" x={chart.left} y={chart.top - 10}>{unit}</text>
     </svg>
   )
 }
-
-function getLineSegments(
-  values: (number | null)[],
-  xPositions: number[],
-  yPosition: (value: number) => number,
-): string[] {
-  const segments: string[] = []
-  let currentSegment: string[] = []
-
-  values.forEach((value, index) => {
-    if (value === null) {
-      if (currentSegment.length > 1) segments.push(currentSegment.join(' '))
-      currentSegment = []
-      return
-    }
-
-    currentSegment.push(
-      `${currentSegment.length === 0 ? 'M' : 'L'} ${xPositions[index]} ${yPosition(value)}`,
-    )
-  })
-
-  if (currentSegment.length > 1) segments.push(currentSegment.join(' '))
-  return segments
-}
-
 function AlertsScreen() {
-  const [acknowledgedAlerts, setAcknowledgedAlerts] = useState<Set<string>>(
-    () =>
-      new Set(
-        alertExamples
-          .filter((example) => example.initiallyAcknowledged)
-          .map((example) => example.id),
-      ),
-  )
+  const [alerts, setAlerts] = useState<ApiAlert[]>([])
+  const [loading, setLoading] = useState(true)
+  const [updatingId, setUpdatingId] = useState<number | null>(null)
+  const [error, setError] = useState('')
 
-  function acknowledgeAlert(id: string) {
-    setAcknowledgedAlerts((current) => new Set(current).add(id))
+  async function loadAlerts() {
+    setError('')
+    try {
+      const results = await Promise.all(DEMO_ASTRONAUT_IDS.map((astronautId) =>
+        apiRequest<ApiAlert[]>(`/api/astronauts/${astronautId}/alerts`),
+      ))
+      setAlerts(results.flat().sort((left, right) => right.generated_at.localeCompare(left.generated_at)))
+    } catch (loadError) {
+      setError(errorMessage(loadError))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    let active = true
+    void Promise.all(DEMO_ASTRONAUT_IDS.map((astronautId) =>
+      apiRequest<ApiAlert[]>(`/api/astronauts/${astronautId}/alerts`),
+    ))
+      .then((results) => { if (active) setAlerts(results.flat().sort((left, right) => right.generated_at.localeCompare(left.generated_at))) })
+      .catch((loadError: unknown) => { if (active) setError(errorMessage(loadError)) })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [])
+
+  function refreshAlerts() {
+    setLoading(true)
+    void loadAlerts()
+  }
+
+  async function updateAlert(alertId: number, status: ApiAlert['status']) {
+    setUpdatingId(alertId)
+    setError('')
+    try {
+      await apiRequest(`/api/alerts/${alertId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+      setAlerts((current) => current.map((alert) => alert.id === alertId ? { ...alert, status } : alert))
+    } catch (updateError) {
+      setError(errorMessage(updateError))
+    } finally {
+      setUpdatingId(null)
+    }
   }
 
   return (
-    <PageIntro
-      eyebrow="ALERTS"
-      title="Alerts"
-      description="Fictional illustrative examples only. This prototype does not generate alerts."
-    >
-      <p className="alert-demo-notice" role="note">
-        These fictional cards are not medical diagnoses or real warnings. Their
-        values, severity labels, times, and reasons are illustrative only;
-        severity labels have no clinical meaning, and nothing here is calculated
-        from health readings. Acknowledgements are temporary demo state and are
-        not saved.
-      </p>
-      <section className="alert-list" aria-label="Illustrative alert examples">
-        {alertExamples.map((example) => {
-          const acknowledged = acknowledgedAlerts.has(example.id)
-
-          return (
-            <article className="alert-card" key={example.id}>
-              <div className="alert-card-heading">
-                <div>
-                  <p className="eyebrow">FICTIONAL EXAMPLE</p>
-                  <h2>{example.indicator}</h2>
-                </div>
-                <span
-                  className={`alert-severity alert-severity-${example.severity.toLowerCase()}`}
-                >
-                  Illustrative severity: {example.severity}
-                </span>
-              </div>
-              <dl className="alert-details">
-                <div>
-                  <dt>Time</dt>
-                  <dd>{example.time}</dd>
-                </div>
-                <div>
-                  <dt>Observed value (synthetic)</dt>
-                  <dd>
-                    {example.value} <span>{example.unit}</span>
-                  </dd>
-                </div>
-              </dl>
-              <p className="alert-reason">
-                <strong>Example reason:</strong> {example.reason}
-              </p>
+    <PageIntro eyebrow="BACKEND DATA" title="Alerts" description="AI-generated alerts stored for all demo astronaut profiles.">
+      <div className="section-heading">
+        <p className="alert-demo-notice" role="note">These are prototype review alerts, not diagnoses or treatment advice. Use the Task 3 integration script to generate a simulated alert.</p>
+        <button className="alert-ack-button" type="button" onClick={refreshAlerts} disabled={loading}>{loading ? 'Loading…' : 'Refresh alerts'}</button>
+      </div>
+      {error && <p className="alert-demo-notice" role="alert">Backend alert request failed: {error}</p>}
+      {loading && alerts.length === 0 && <p className="metric-note">Loading alerts from the backend…</p>}
+        {!loading && !error && alerts.length === 0 && <p className="metric-note">No alerts are stored for the demo profiles. Run the Task 3 integration script to send a simulated AI alert.</p>}
+      <section className="alert-list" aria-label="Backend alerts">
+        {alerts.map((alert) => (
+          <article className="alert-card" key={alert.id}>
+            <div className="alert-card-heading">
+              <div><p className="eyebrow">ASTRONAUT {alert.astronaut_id} · {alert.status.toUpperCase()}</p><h2>{alert.title}</h2></div>
+              <span className={`alert-severity alert-severity-${alert.severity}`}>{alert.severity.toUpperCase()}</span>
+            </div>
+            <dl className="alert-details">
+              <div><dt>Generated</dt><dd>{displayTime(alert.generated_at)}</dd></div>
+              <div><dt>Indicator</dt><dd>{alert.indicator_code ?? 'Multiple indicators'}</dd></div>
+              {alert.model_name && <div><dt>Analysis module</dt><dd>{alert.model_name}</dd></div>}
+              {alert.confidence !== null && <div><dt>Confidence</dt><dd>{Math.round(alert.confidence * 100)}%</dd></div>}
+            </dl>
+            <p className="alert-reason">{alert.message}</p>
+            {alert.status === 'new' && (
               <div className="alert-acknowledgement">
-                <p className="alert-ack-status" role="status">
-                  {acknowledged
-                    ? 'Acknowledged (demo only)'
-                    : 'Not acknowledged (demo)'}
-                </p>
-                {!acknowledged && (
-                  <button
-                    className="alert-ack-button"
-                    type="button"
-                    onClick={() => acknowledgeAlert(example.id)}
-                  >
-                    Acknowledge example
-                  </button>
-                )}
+                <p className="alert-ack-status" role="status">Awaiting review</p>
+                <button className="alert-ack-button" type="button" disabled={updatingId === alert.id} onClick={() => void updateAlert(alert.id, 'acknowledged')}>{updatingId === alert.id ? 'Saving…' : 'Acknowledge'}</button>
+                <button className="alert-ack-button" type="button" disabled={updatingId === alert.id} onClick={() => void updateAlert(alert.id, 'dismissed')}>Dismiss</button>
               </div>
-            </article>
-          )
-        })}
+            )}
+          </article>
+        ))}
       </section>
     </PageIntro>
   )
 }
-
 function CheckInScreen() {
   const [sleepHours, setSleepHours] = useState('')
   const [mood, setMood] = useState('')
@@ -848,8 +432,9 @@ function CheckInScreen() {
     symptoms?: string
   }>({})
   const [formMessage, setFormMessage] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  function handlePreview() {
+  async function handleSubmit() {
     const nextErrors: typeof errors = {}
     const normalizedSleep = sleepHours.trim()
     const normalizedSymptoms = symptoms.trim()
@@ -880,31 +465,61 @@ function CheckInScreen() {
       return
     }
 
-    setFormMessage('Preview complete. Nothing was saved or sent.')
+    setIsSubmitting(true)
+    setFormMessage('Sending check-in…')
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/checkins`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          astronaut_id: 1,
+          sleep_hours: Number(normalizedSleep),
+          mood,
+          symptoms: normalizedSymptoms,
+        }),
+      })
+      const result = await response.json().catch(() => ({})) as { detail?: string }
+      if (!response.ok) {
+        throw new Error(result.detail || `The server returned HTTP ${response.status}.`)
+      }
+      setFormMessage('Check-in saved successfully to the backend.')
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : 'Unknown error.'
+      setFormMessage(
+        error instanceof TypeError
+          ? `Could not reach ${API_BASE_URL}. Make sure the backend is running.`
+          : `Could not save the check-in: ${detail}`,
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
     <PageIntro
       eyebrow="CHECK-IN"
       title="Check-in"
-      description="Sleep, mood, and symptoms are self-reported. This is a preview only."
+      description="Submit a self-reported demo check-in to the local SapphireUSX backend."
     >
       <section className="checkin-card checkin-form-card" aria-labelledby="checkin-form-title">
         <div className="card-heading">
           <div>
             <p className="eyebrow">SELF-REPORTED</p>
-            <h2 id="checkin-form-title">Check-in preview</h2>
+            <h2 id="checkin-form-title">Daily check-in</h2>
           </div>
           <span className="checkin-sparkle" aria-hidden="true">✧</span>
         </div>
         <p className="checkin-preview-notice">
-          Preview only. Entries are not saved or sent.
+          Demo only. This submits to astronaut profile 1 in your local database.
         </p>
 
         <form
           className="checkin-form"
           noValidate
-          onSubmit={(event) => event.preventDefault()}
+          onSubmit={(event) => {
+            event.preventDefault()
+            void handleSubmit()
+          }}
         >
           <div className="field-group">
             <label htmlFor="sleep-hours">Sleep (self-reported)</label>
@@ -949,10 +564,9 @@ function CheckInScreen() {
               }}
             >
               <option value="">Select a mood</option>
-              <option value="good">Good</option>
-              <option value="okay">Okay</option>
-              <option value="low">Low</option>
-              <option value="prefer-not-to-say">Prefer not to say</option>
+              <option value="Great">Great</option>
+              <option value="Okay">Okay</option>
+              <option value="Low">Low</option>
             </select>
             <p className="field-error" id="checkin-mood-error">
               {errors.mood}
@@ -980,8 +594,8 @@ function CheckInScreen() {
             </p>
           </div>
 
-          <button className="submit-button" type="button" onClick={handlePreview}>
-            Preview check-in
+          <button className="submit-button" type="submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Sending…' : 'Submit check-in'}
           </button>
           <p className="form-message" role="status" aria-live="polite">
             {formMessage}
@@ -993,66 +607,38 @@ function CheckInScreen() {
 }
 
 function SourcesScreen() {
+  const [measurements, setMeasurements] = useState<{ indicator_code: string; source: string; source_kind: string; measured_at: string }[]>([])
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    let active = true
+    void apiRequest<{ indicator_code: string; source: string; source_kind: string; measured_at: string }[]>(
+      `/api/astronauts/${DEMO_ASTRONAUT_ID}/measurements?limit=500`,
+    )
+      .then((result) => { if (active) setMeasurements(result) })
+      .catch((loadError: unknown) => { if (active) setError(errorMessage(loadError)) })
+    return () => { active = false }
+  }, [])
+
+  const streams = [...new Map(measurements.map((item) => [`${item.indicator_code}:${item.source_kind}`, item])).values()]
+
   return (
-    <PageIntro
-      eyebrow="DATA PROVENANCE"
-      title="Sources"
-      description="OSD-575 is listed as a research dataset reference only; it is not connected to the prototype's synthetic vital readings."
-    >
+    <PageIntro eyebrow="DATA PROVENANCE" title="Sources" description="Measurement sources and the research reference are kept separate in the backend.">
       <section className="source-list source-research-card" aria-labelledby="osd-575-title">
-        <div className="source-research-heading">
-          <div>
-            <p className="eyebrow">RESEARCH DATASET</p>
-            <h2 id="osd-575-title">NASA OSDR study OSD-575</h2>
-          </div>
-          <span className="source-status">Reference only · Not connected</span>
-        </div>
-        <p className="source-research-description">
-          Contains serum biomarker samples from the Inspiration4 study, with
-          coded participants and sample time points before and after flight.
-        </p>
-        <a
-          className="source-research-link"
-          href="https://osdr.nasa.gov/bio/repo/data/studies/OSD-575"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          View official study record (NASA OSDR)
-        </a>
-        <div className="source-research-note">
-          <h3>Laboratory results, not live vital signs</h3>
-          <p>
-            These are laboratory serum biomarker results, not live vital signs.
-            They are not connected to or used to populate the synthetic heart
-            rate, blood pressure, SpO₂, or other vital readings.
-          </p>
-        </div>
-        <p className="source-research-caution">
-          Percentage fields in the dataset are not interpreted because their
-          meaning has not been verified.
-        </p>
+        <div className="source-research-heading"><div><p className="eyebrow">RESEARCH REFERENCE</p><h2 id="osd-575-title">NASA OSDR study OSD-575</h2></div><span className="source-status">Reference only · Not loaded into crew measurements</span></div>
+        <p className="source-research-description">The study is documented as a separate research reference. Its laboratory samples do not populate the crew dashboard or alerts.</p>
+        <a className="source-research-link" href="https://osdr.nasa.gov/bio/repo/data/studies/OSD-575" target="_blank" rel="noopener noreferrer">View official study record (NASA OSDR)</a>
+        <div className="source-research-note"><h3>Separate from crew measurements</h3><p>NASA research values remain in the reference dataset tables and are not mixed with simulated or self-reported crew data.</p></div>
       </section>
-      <div className="source-list">
-        {sampleMetrics.map((metric) => (
-          <article className="source-row" key={metric.key}>
-            <div>
-              <h2>{metric.label}</h2>
-              <p>Source: Synthetic demo data · no live source connected</p>
-            </div>
-            <span className="source-status">
-              Synthetic demo data · no live source connected
-            </span>
-          </article>
-        ))}
-        <p className="metric-note">
-          The synthetic demo readings above are not populated from or connected
-          to OSD-575.
-        </p>
-      </div>
+      <section className="source-list" aria-label="Backend measurement sources">
+        <h2>Sources recorded for demo astronaut 1</h2>
+        {error && <p className="alert-demo-notice" role="alert">Could not load measurement sources: {error}</p>}
+        {!error && streams.length === 0 && <p className="metric-note">No measurements have been returned by the backend.</p>}
+        {streams.map((item) => <article className="source-row" key={`${item.indicator_code}:${item.source_kind}`}><div><h2>{item.indicator_code}</h2><p>Latest record: {displayTime(item.measured_at)}</p></div><span className="source-status">{item.source} · {item.source_kind.replace('_', ' ')}</span></article>)}
+      </section>
     </PageIntro>
   )
 }
-
 function AboutScreen() {
   return (
     <PageIntro
@@ -1089,8 +675,8 @@ function AboutScreen() {
             <h2 id="prototype-about-title">Prototype disclaimer</h2>
             <p>
               This prototype is not for health monitoring, diagnosis, or
-              treatment decisions. All displayed readings are synthetic demo
-              values.
+              treatment decisions. Seed records are simulated, while submitted
+              check-ins are self-reported demo entries.
             </p>
           </div>
         </section>

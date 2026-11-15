@@ -18,9 +18,9 @@ uvicorn main:app --reload --port 8000
 ```
 
 - API docs and a "Try it out" panel: <http://localhost:8000/docs>
-- Frontend (run in a second terminal from the repo root): `python3 -m http.server 5500`, then open <http://localhost:5500>
+- Integrated React frontend (run in a second terminal): from `frontend/`, run `npm ci` then `npm run dev`, and open the Vite URL (usually <http://localhost:5173>). The root static HTML is a legacy demo.
 
-Open the frontend through the server, not by double-clicking `index.html`.
+Use the React frontend served by Vite; the static root HTML page is a legacy demo.
 
 ### Configuration
 
@@ -165,10 +165,10 @@ Response: `{"id": 1, "created": true}`. Wrong key returns `401`.
 
 ## For Member 2: using the API from the frontend
 
-- Send check-ins with `POST /api/checkins` (already wired in `script.js`).
-- Fill dashboard cards from `/api/astronauts/1/summary`. Each item has `value`, `unit`, `ref_low`, `ref_high`, `measured_at`, and `source_kind`, so you can show a "sample"/"simulated" label.
-- Draw charts from `/api/astronauts/1/history/{indicator}`.
-- Show alerts from `/api/astronauts/1/alerts?status=new` and acknowledge with `PATCH /api/alerts/{id}`.
+- The React check-in form sends `POST /api/checkins`; submitted sleep and mood measurements are stored for demo astronaut 1.
+- The Overview and Trends views read `/api/astronauts/1/summary` and `/api/astronauts/1/history/{indicator}`.
+- The Alerts view reads alerts from all five seeded astronaut profiles and saves status changes with `PATCH /api/alerts/{id}`.
+- Run `task3-ai/manual_backend_integration.py` to generate and send a simulated Task 3 alert; it will appear in Alerts.
 - CORS is open for the demo, so a frontend on another port works.
 
 ## For Member 1: updating the health indicators

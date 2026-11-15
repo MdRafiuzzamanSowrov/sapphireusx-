@@ -1,0 +1,12 @@
+# Python environments and generated files
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Local demo database
+backend/sapphire.db
+
+# Frontend build/install output
+frontend/node_modules/
+frontend/dist/

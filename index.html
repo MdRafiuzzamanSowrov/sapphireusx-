@@ -243,10 +243,10 @@
           <div class="page-intro"><p class="eyebrow">CHECK-IN</p><h1 id="checkin-title">Check-in</h1><p class="welcome-subtitle">Sleep, mood, and symptoms are self-reported. This is a preview only.</p></div>
           <section class="checkin-card checkin-form-card" aria-labelledby="checkin-form-title">
             <div class="card-heading">
-              <div><p class="eyebrow">SELF-REPORTED</p><h2 id="checkin-form-title">Check-in preview</h2></div>
+              <div><p class="eyebrow">SELF-REPORTED</p><h2 id="checkin-form-title">Daily check-in</h2></div>
               <span class="checkin-sparkle" aria-hidden="true">✧</span>
             </div>
-            <p class="checkin-preview-notice">Preview only. Entries are not saved or sent.</p>
+            <p class="checkin-preview-notice">Demo only. This submits to astronaut profile 1 in your local database.</p>
             <form class="checkin-form" id="checkin-form" novalidate>
               <div class="field-group">
                 <label for="sleep-hours">Sleep (self-reported)</label>
@@ -260,10 +260,9 @@
                 <label for="checkin-mood">Mood (self-reported)</label>
                 <select class="checkin-select" id="checkin-mood" name="mood" aria-invalid="false" aria-describedby="checkin-mood-error">
                   <option value="">Select a mood</option>
-                  <option value="good">Good</option>
-                  <option value="okay">Okay</option>
-                  <option value="low">Low</option>
-                  <option value="prefer-not-to-say">Prefer not to say</option>
+                  <option value="Great">Great</option>
+                  <option value="Okay">Okay</option>
+                  <option value="Low">Low</option>
                 </select>
                 <p class="field-error" id="checkin-mood-error"></p>
               </div>
@@ -272,7 +271,7 @@
                 <textarea id="checkin-symptoms" name="symptoms" maxlength="500" placeholder="Enter a brief note or “None.”" aria-invalid="false" aria-describedby="checkin-symptoms-error"></textarea>
                 <p class="field-error" id="checkin-symptoms-error"></p>
               </div>
-              <button class="submit-button" id="preview-checkin" type="button">Preview check-in</button>
+              <button class="submit-button" id="preview-checkin" type="submit">Submit check-in</button>
               <p class="form-message" id="checkin-form-message" role="status" aria-live="polite"></p>
             </form>
           </section>
