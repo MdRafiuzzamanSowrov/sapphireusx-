@@ -86,6 +86,14 @@ def load_reference_ranges(path) -> pd.DataFrame:
     return df
 
 
+def load_metric_table(path) -> pd.DataFrame:
+    """Task 1 metric metadata, including direction of concern for personal deviations."""
+    df = pd.read_csv(path)
+    df["metric_code"] = df["indicator"].astype(str).str.strip().str.upper()
+    df["direction_of_concern"] = df["direction_of_concern"].fillna("").astype(str).str.strip().str.lower()
+    return df
+
+
 def load_daily_schedule(path) -> pd.DataFrame:
     """Task 1 `daily_schedule.csv`; time columns parsed as UTC (blank = no exercise that day)."""
     df = pd.read_csv(path)

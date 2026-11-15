@@ -25,10 +25,23 @@ No LLM is used anywhere in the analysis path.
 | Component | File | State |
 |---|---|---|
 | Loader + contract schema | `ai/loader.py`, `ai/schema.py` | done, tested |
-| Config | `ai/config/thresholds.yaml`, `ai/config.py` | data-quality and baseline settings done; alert rules pending |
+| Config | `ai/config/thresholds.yaml`, `ai/config.py` | data-quality and baseline settings done; source alert bands in Task 1 data |
 | Data-quality validator | `ai/validator.py` | done, tested against Task 1 answer key |
 | Preprocessing + personal baseline | `ai/preprocess.py`, `ai/baseline.py` | done, tested (median/MAD per astronaut, metric, context; no peeking) |
-| Detectors, alerts, `analysis.py`, OSD-575 module, plots | | planned |
+| Reference-band screening + explainable findings | `ai/detectors.py` | implemented; rule-based, provisional |
+| Pipeline entry point | `ai/analysis.py` | implemented; quality, baseline, screening |
+| Proposed JSON output + local schema validation | `ai/analysis.py`, `ai/schema.py` | implemented; backend adapter follows integration report |
+| Backend alert request adapter | `ai/backend_adapter.py` | four seeded indicator mappings; unseeded metrics go in evidence without indicator_code |
+| OSD-575 cardiovascular descriptive module | `ai/osd575.py` | implemented; separate from vitals |
+| IsolationForest comparison | `ai/experimental.py` | optional, experimental; never affects severity |
+| Descriptive and vital-series charts | `ai/plots.py` | implemented as plotting helpers |
+
+The prototype maps source flags as watch → LOW, review → MEDIUM, and urgent → HIGH.
+Reported symptoms receive MEDIUM for review. These are not clinical severity judgments.
+Exercise and recovery are excluded from awake/resting heart-rate and respiratory-rate bands.
+An enabled personal baseline may add a LOW review finding at robust z ≥ 3.5 in the metric's concern direction;
+this is provisional and not medically validated.
+Invalid, missing, suspect, and duplicate rows never alert.
 
 ## Setup (Windows PowerShell)
 ```powershell
