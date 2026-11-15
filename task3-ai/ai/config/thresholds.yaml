@@ -18,65 +18,106 @@
 # continuous sensors are rounded too coarsely (legitimate runs of 9-13 readings), so no
 # flat-line rule is applied to them. This must be recalibrated on real wearable data.
 
+# Baseline settings (Layer 2, ai/baseline.py)
+#   A reading is compared with the same astronaut's earlier VALID readings of the same metric
+#   in the same context (awake / asleep / exercise / recovery), using median and MAD.
+#   Only data strictly BEFORE the reading's hour is used (no peeking at the future).
+#   lookback_days       how far back the baseline window reaches
+#   as_of_step_minutes  baselines are refreshed on this grid; a reading uses the baseline as of
+#                       the start of its own step (60 -> the data of its own hour is not used)
+#   min_points          minimum earlier readings (per metric override allowed)
+#   min_span_hours      the earlier readings must span at least this long, so a baseline is never
+#                       learned from a few hours of one circadian phase (design assumption)
+#   min_scale           floor for the robust scale max(1.4826*MAD, min_scale). Rounded sensors
+#                       often give MAD = 0; the floor is the measurement resolution seen in the
+#                       data (smallest non-zero step between distinct values).
+#   enabled: false      no baseline (binary reports, running totals, 2-point series)
+# ALL VALUES ARE PROVISIONAL design choices, not validated on real astronaut data.
+
 version: 1
 status: PROVISIONAL
+
+baseline:
+  lookback_days: 7
+  as_of_step_minutes: 60
+  min_points: 20
+  min_span_hours: 24
 
 metrics:
   HEART_RATE:
     unit: bpm
     validity: {min_exclusive: 0}
     flatline_min_run: 30
+    baseline: {min_scale: 1}
   HEART_RATE_VARIABILITY:
     unit: ms
     validity: {min: 0}
+    baseline: {min_scale: 1}
   BLOOD_OXYGEN_SPO2:
     unit: "%"
     validity: {min: 0, max: 100}          # upper limit 100 by definition of a percentage
+    baseline: {min_scale: 1}
   RESPIRATORY_RATE:
     unit: breaths/min
     validity: {min_exclusive: 0}
+    baseline: {min_scale: 1}
   BODY_TEMPERATURE:
     unit: degC
     validity: {}                          # no sourced plausibility limit
+    baseline: {min_scale: 0.1}
   BLOOD_PRESSURE_SYSTOLIC:
     unit: mmHg
     validity: {min_exclusive: 0}
+    baseline: {min_points: 6, min_scale: 1}
   BLOOD_PRESSURE_DIASTOLIC:
     unit: mmHg
     validity: {min_exclusive: 0}
+    baseline: {min_points: 6, min_scale: 1}
   SLEEP_DURATION:
     unit: hours
     validity: {min: 0, max: 24}
+    baseline: {min_points: 3, min_scale: 0.1}
   SLEEP_QUALITY:
     unit: score_1_to_5
     validity: {integer_range: [1, 5]}
+    baseline: {min_points: 3, min_scale: 1}
   EXERCISE_TIME:
     unit: min/day
     validity: {min: 0, max: 1440}
+    baseline: {min_points: 3, min_scale: 1}
   WATER_INTAKE:
     unit: L/day
     validity: {min: 0}
+    baseline: {min_points: 3, min_scale: 0.1}
   RADIATION_DOSE_CUMULATIVE:
     unit: mSv
     validity: {min: 0, monotonic: nondecreasing}
+    baseline: {enabled: false}
   STRESS_SCORE:
     unit: score_1_to_5
     validity: {integer_range: [1, 5]}
+    baseline: {min_points: 3, min_scale: 1}
   FATIGUE_SCORE:
     unit: score_1_to_5
     validity: {integer_range: [1, 5]}
+    baseline: {min_points: 3, min_scale: 1}
   SYMPTOM_HEADACHE:
     unit: yes_no
     validity: {allowed_values: [0, 1]}
+    baseline: {enabled: false}
   SYMPTOM_NAUSEA:
     unit: yes_no
     validity: {allowed_values: [0, 1]}
+    baseline: {enabled: false}
   SYMPTOM_VISION_CHANGE:
     unit: yes_no
     validity: {allowed_values: [0, 1]}
+    baseline: {enabled: false}
   SYMPTOM_BACK_PAIN:
     unit: yes_no
     validity: {allowed_values: [0, 1]}
+    baseline: {enabled: false}
   BODY_MASS:
     unit: kg
     validity: {min_exclusive: 0}
+    baseline: {enabled: false}

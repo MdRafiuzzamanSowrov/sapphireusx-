@@ -25,9 +25,10 @@ No LLM is used anywhere in the analysis path.
 | Component | File | State |
 |---|---|---|
 | Loader + contract schema | `ai/loader.py`, `ai/schema.py` | done, tested |
-| Config | `ai/config/thresholds.yaml`, `ai/config.py` | data-quality rules done; alert rules pending |
+| Config | `ai/config/thresholds.yaml`, `ai/config.py` | data-quality and baseline settings done; alert rules pending |
 | Data-quality validator | `ai/validator.py` | done, tested against Task 1 answer key |
-| Preprocessing, baseline, detectors, alerts, OSD-575 module, plots | | planned |
+| Preprocessing + personal baseline | `ai/preprocess.py`, `ai/baseline.py` | done, tested (median/MAD per astronaut, metric, context; no peeking) |
+| Detectors, alerts, `analysis.py`, OSD-575 module, plots | | planned |
 
 ## Setup (Windows PowerShell)
 ```powershell
