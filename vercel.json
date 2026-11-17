@@ -11,7 +11,7 @@
     },
     "ai-task": {
       "root": "task3-ai/",
-      "entrypoint": "main:app"
+      "entrypoint": "app:app"
     }
   },
   "rewrites": [
