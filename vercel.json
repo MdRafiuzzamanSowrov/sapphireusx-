@@ -1,20 +1,31 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "services": {
+    "frontend-app": {
+      "root": "frontend/",
+      "framework": "vite"
+    },
     "backend-api": {
       "root": "backend/",
       "entrypoint": "main:app"
     },
     "ai-task": {
-      "root": "task3-ai/"
-    },
-    "frontend-app": {
-      "root": "frontend/",
-      "framework": "vite"
+      "root": "task3-ai/",
+      "runtime": "python"
     }
   },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": { "service": "backend-api" } },
-    { "source": "/(.*)", "destination": { "service": "frontend-app" } }
+    {
+      "source": "/api/(.*)",
+      "destination": {
+        "service": "backend-api"
+      }
+    },
+    {
+      "source": "/(.*)",
+      "destination": {
+        "service": "frontend-app"
+      }
+    }
   ]
 }
